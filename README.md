@@ -7,9 +7,7 @@ Basic python based script to generate a (local) COOL database from a neural net 
 
 How do I use it?
 ----------------
-Set up Athena using https://github.com/Marie89/ATHENA-retagging-setup/blob/master/setup_TestArea.sh
-
-Run the converter. Example:
-`python JSONtoCOOL_converter.py "AGILEPack_December_1D_btagging.json" "BTagCalibRUN2-08-14_new.root"`
+Run the converter:
+`source JSONtoCOOL.sh`
 
 Adapt the job options.

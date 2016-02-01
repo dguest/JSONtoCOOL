@@ -1,0 +1,78 @@
+#!/usr/bin/env bash
+
+set -eu
+
+ROOT_DB_FILE=BTagCalibRUN2-08-14_inclDL1.root
+TAG_NAME=BTagCalibRUN2-08-14_inclDL1
+
+function _usage() {
+    echo "usage $0 <base root file> [<json file to add>]"
+}
+
+function _help() {
+    cat <<EOF
+
+Script to make the creation of b-tagging calibration files less painful
+
+To use you'll need:
+ - A base ROOT file which contains calibrations for the existing
+   taggers.
+ - Optionally: a json file which you want to add to that file.
+
+This script will:
+ - Convert the JSON file to a ROOT file using the included python
+   script. This file will have the same name as the json file, with
+   the extension replaced with '.root'
+ - Call 'hadd' to combine the base root file with the new root
+   file. The resulting file will be called $ROOT_DB_FILE.
+ - Set the GUID for this file, and insert the file into the local pool
+   file catalogue.
+ - Create a local database file and set the appropriate channels.
+
+You'll have to add several lines to your JO file to use the resulting DB:
+
+"""
+BTaggingFlags.CalibrationFromLocalReplica = True
+BTaggingFlags.CalibrationFolderRoot = '/GLOBAL/BTagCalib/'
+BTaggingFlags.CalibrationTag = '$TAG_NAME'
+"""
+
+To change '$TAG_NAME' and '$ROOT_DB_FILE', edit this script.
+
+EOF
+}
+
+
+# arg 1 is the calibration file, arg 2 is the json file
+
+DIR=$(dirname $0)
+if [[ $# == 2 ]]; then
+    NEW_ROOT_FILE=${1%%.json}.root
+    python $DIR/JSONtoCOOL_converter.py $2 2> /dev/null
+    hadd $ROOT_DB_FILE $NEW_ROOT_FILE $1 2> /dev/null
+elif [[ $# == 1 ]]; then
+    cp $1 $ROOT_DB_FILE
+else
+    _usage
+    _help
+    exit 1
+fi
+
+# Associate a GUID to this file
+coolHist_setFileIdentifier.sh $ROOT_DB_FILE
+# Insert the calibration ROOT file into a local COOL file catalogue:
+coolHist_insertFileToCatalog.py $ROOT_DB_FILE
+
+# Generate a local database
+coolHist_setReference.py OFLP200 /GLOBAL/BTagCalib/RUN12 1 $TAG_NAME $ROOT_DB_FILE
+
+# Open it to define it's channel
+expect <<EOF
+spawn AtlCoolConsole.py "sqlite://;schema=mycool.db;dbname=OFLP200"
+expect ">>>"
+send "setchan /GLOBAL/BTagCalib/RUN12 1 RUN12\n"
+expect ">>>"
+send "exit\n"
+expect eof
+EOF
+

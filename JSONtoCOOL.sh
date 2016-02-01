@@ -1,21 +1,31 @@
-python JSONtoCOOL_converter.py AGILEPack_December_1D_btagging.json 2> /dev/null
-hadd BTagCalibRUN2-08-14_inclDL1.root BTagCalibRUN2-08-14_copy.root AGILEPack_December_1D_btagging.root 2> /dev/null
+#!/usr/bin/env bash
 
-SRC_DIR=$(pwd)  # come back to this directory later
-cd $HOME
-source setup_TestArea.sh
-cp  $SRC_DIR/BTagCalibRUN2-08-14_inclDL1.root $TestArea/.
+set -eu
+
+ROOT_DB_FILE=BTagCalibRUN2-08-14_inclDL1.root
+TAG_NAME=BTagCalibRUN2-08-14_inclDL1
+
+# arg 1 is the calibration file, arg 2 is the json file
+
+DIR=$(dirname $0)
+if [[ $# == 2 ]]; then
+    NEW_ROOT_FILE=${1%%.json}.root
+    python $DIR/JSONtoCOOL_converter.py $2 2> /dev/null
+    hadd $ROOT_DB_FILE $NEW_ROOT_FILE $1 2> /dev/null
+elif [[ $# == 1 ]]; then
+    cp $1 $ROOT_DB_FILE
+else
+    echo "usage $0 <base root file> [<json file to add>]"
+    exit 1
+fi
+
 # Associate a GUID to this file
-coolHist_setFileIdentifier.sh $TestArea/BTagCalibRUN2-08-14_inclDL1.root
+coolHist_setFileIdentifier.sh $ROOT_DB_FILE
 # Insert the calibration ROOT file into a local COOL file catalogue:
-coolHist_insertFileToCatalog.py  BTagCalibRUN2-08-14_inclDL1.root  &> temp.txt
-cmd=$(grep -i 'Execute'  temp.txt | sed -E 's/\Execute //g')
-rm temp.txt
-echo $cmd
-$cmd
+coolHist_insertFileToCatalog.py $ROOT_DB_FILE
 
 # Generate a local database
-coolHist_setReference.py OFLP200 /GLOBAL/BTagCalib/RUN12 1 BTagCalibRUN2-08-14_inclDL1 BTagCalibRUN2-08-14_inclDL1.root
+coolHist_setReference.py OFLP200 /GLOBAL/BTagCalib/RUN12 1 $TAG_NAME $ROOT_DB_FILE
 
 # Open it to define it's channel
 expect <<EOF
@@ -27,8 +37,3 @@ send "exit\n"
 expect eof
 EOF
 
-# go back to the directory we started in
-cd $SRC_DIR
-
-# cleanup
-unset SRC_DIR FILE

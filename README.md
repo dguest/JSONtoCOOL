@@ -16,4 +16,4 @@ this script**)
 ./JSONtoCOOL
 ```
 
-This will print a help list and follow the instructions.
+This will print help. Follow the instructions.

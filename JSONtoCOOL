@@ -2,8 +2,19 @@
 
 set -eu
 
-ROOT_DB_FILE=BTagCalibRUN2-08-14_inclDL1.root
-TAG_NAME=BTagCalibRUN2-08-14_inclDL1
+# ________________________________________________________________________
+# User-defined strings
+
+# Edit these variables to change the name of the ROOT file produced...
+ROOT_DB_FILE=BTagCalibRUN2-test.root
+# ...and the name of the calibraiton tag
+TAG_NAME=BTagCalibRUN2-test
+
+# Change this if you want to see the output
+OUT_LOG=/dev/null
+
+# _______________________________________________________________________
+# Main program starts here (you shouldn't have to edit this)
 
 function _usage() {
     echo "usage $0 <base root file> [<json file to add>]"
@@ -42,15 +53,30 @@ To change '$TAG_NAME' and '$ROOT_DB_FILE', edit this script.
 EOF
 }
 
-
-# arg 1 is the calibration file, arg 2 is the json file
-
 DIR=$(dirname $0)
+
+# Arg 1 is the base calibration file, arg 2 is the json file. If the
+# json file is given, we need to build a root file.
 if [[ $# == 2 ]]; then
-    NEW_ROOT_FILE=${1%%.json}.root
-    python $DIR/JSONtoCOOL_converter.py $2 2> /dev/null
-    hadd $ROOT_DB_FILE $NEW_ROOT_FILE $1 2> /dev/null
+    if [[ $2 != *.json ]]; then
+        echo "ERROR: second arg should have extension .json" >&2
+        exit 1
+    fi
+    NEW_ROOT_FILE=${2%%.json}.root
+    echo "building root file from json..."
+    python $DIR/JSONtoCOOL_converter.py $2 2> $OUT_LOG
+    if [[ -f $ROOT_DB_FILE ]]; then
+        echo "$ROOT_DB_FILE already exists, removing..."
+        rm $ROOT_DB_FILE
+    fi
+
+    # Hadd the root files together.
+    if ! hadd $ROOT_DB_FILE $NEW_ROOT_FILE $1 &> $OUT_LOG; then
+        echo "error in hadd!" >&2
+        exit 1
+    fi
 elif [[ $# == 1 ]]; then
+    # if no json file is given, just copy the base root file
     cp $1 $ROOT_DB_FILE
 else
     _usage
@@ -59,15 +85,21 @@ else
 fi
 
 # Associate a GUID to this file
-coolHist_setFileIdentifier.sh $ROOT_DB_FILE
+echo "setting file GUID"
+coolHist_setFileIdentifier.sh $ROOT_DB_FILE | grep GUID
+
 # Insert the calibration ROOT file into a local COOL file catalogue:
-coolHist_insertFileToCatalog.py $ROOT_DB_FILE
+echo "inserting file into pool catalogue..."
+coolHist_insertFileToCatalog.py $ROOT_DB_FILE > $OUT_LOG
 
 # Generate a local database
-coolHist_setReference.py OFLP200 /GLOBAL/BTagCalib/RUN12 1 $TAG_NAME $ROOT_DB_FILE
+echo "generating local database file..."
+coolHist_setReference.py OFLP200 /GLOBAL/BTagCalib/RUN12 1 $TAG_NAME \
+                         $ROOT_DB_FILE > $OUT_LOG
 
-# Open it to define it's channel
-expect <<EOF
+# Open it to define its channel
+echo "setting channel..."
+expect <<EOF > $OUT_LOG
 spawn AtlCoolConsole.py "sqlite://;schema=mycool.db;dbname=OFLP200"
 expect ">>>"
 send "setchan /GLOBAL/BTagCalib/RUN12 1 RUN12\n"
@@ -76,3 +108,4 @@ send "exit\n"
 expect eof
 EOF
 
+echo "done!"

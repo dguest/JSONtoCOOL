@@ -7,7 +7,13 @@ Basic python based script to generate a (local) COOL database from a neural net 
 
 How do I use it?
 ----------------
-Run the converter:
-`source JSONtoCOOL.sh`
+Run `./JSONtoCOOL <base root file> <json file to add>`.
 
-Adapt the job options.
+For more info, run the converter with no arguments (**do NOT source
+this script**)
+
+```
+./JSONtoCOOL
+```
+
+This will print help. Follow the instructions.

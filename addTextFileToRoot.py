@@ -1,11 +1,12 @@
 import ROOT
-import sys, os
+import sys
 import json
-from os import system 
 
 def _run():
     inFile = sys.argv[1]
 
+    # Check the input format matches expectation (JSON)
+    # TODO: The input file should be a text file (JSON, YAML, whatever...). sanity check will be changed to make sure it's not a ROOT file.
     _sanity_check(inFile, ".json", 1)
 
     with open(inFile,'r') as fp:
@@ -22,10 +23,10 @@ def _run():
     ROOT_str_name.Write("net_configuration")
     outHandle.Write()
     outHandle.Close()
-    
+
 def _sanity_check(file_name, string_end, n):
     if not file_name.endswith(string_end):
-        print "Output file does not match expected format, please end with ", string_end
+        raise NameError("Input file does not match expected format, please end with ", string_end)
         sys.exit(n)
 
 

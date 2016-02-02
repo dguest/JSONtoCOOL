@@ -7,8 +7,10 @@ set -eu
 
 # Edit these variables to change the name of the ROOT file produced...
 ROOT_DB_FILE=BTagCalibRUN2-test.root
-# ...and the name of the calibraiton tag
+# ...and the name of the calibraiton tag...
 TAG_NAME=BTagCalibRUN2-test
+# ...and the Athena version.
+ATH_SETUP_CMD=20.1.6.3,AtlasDerivation,gcc48,here
 
 # Change this if you want to see the output
 OUT_LOG=/dev/null
@@ -58,22 +60,28 @@ DIR=$(dirname $0)
 # Arg 1 is the base calibration file, arg 2 is the json file. If the
 # json file is given, we need to build a root file.
 if [[ $# == 2 ]]; then
-    if [[ $2 != *.json ]]; then
-        echo "ERROR: second arg should have extension .json" >&2
-        exit 1
+    if [[ $1 != *.root ]]; then
+	echo "ERROR: first arg should have extension .root" >&2
+	exit 1
     fi
+    if [[ $2 != *.json ]]; then
+	echo "ERROR: second arg should have extension .json" >&2
+	exit 1
+    fi
+    echo "check for existing GUID in input ROOT calibration file..."
     NEW_ROOT_FILE=${2%%.json}.root
+    python $DIR/removeExistingGUID.py $1 2> $OUT_LOG
     echo "building root file from json..."
-    python $DIR/JSONtoCOOL_converter.py $2 2> $OUT_LOG
+    python $DIR/addTextFileToRoot.py $2 2> $OUT_LOG
     if [[ -f $ROOT_DB_FILE ]]; then
-        echo "$ROOT_DB_FILE already exists, removing..."
-        rm $ROOT_DB_FILE
+	echo "$ROOT_DB_FILE already exists, removing..."
+	rm $ROOT_DB_FILE
     fi
 
     # Hadd the root files together.
     if ! hadd $ROOT_DB_FILE $NEW_ROOT_FILE $1 &> $OUT_LOG; then
-        echo "error in hadd!" >&2
-        exit 1
+	echo "error in hadd!" >&2
+	exit 1
     fi
 elif [[ $# == 1 ]]; then
     # if no json file is given, just copy the base root file
@@ -81,6 +89,30 @@ elif [[ $# == 1 ]]; then
 else
     _usage
     _help
+    exit 1
+fi
+
+export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
+export ALRB_localConfigDir=$HOME/localConfig
+export AtlasSetup=/afs/cern.ch/atlas/software/dist/AtlasSetup
+alias setupATLAS='source ${ATLAS_LOCAL_ROOT_BASE}/user/atlasLocalSetup.sh'
+
+# ATLAS setup check
+if [[ ! $ATLAS_LOCAL_ASETUP_VERSION ]]; then
+    echo -n "setting up local ATLAS environment..."
+    setupATLAS -q
+    echo "done"
+    echo "Setting up Athena.\nPlease enter the full path of the test area you want to use: "
+    read TestArea_DIR
+    echo "Athena will be set up in the directory: $TestArea_DIR"
+    mv $ROOT_DB_FILE $TestArea_DIR/$ROOT_DB_FILE
+    cd $TestArea_DIR
+    source $AtlasSetup/scripts/asetup.sh $ATH_SETUP_CMD
+    exit 1
+else
+    echo "ATLAS environment is already setup in $TestArea, not setting up again"
+    mv $ROOT_DB_FILE $TestArea/$ROOT_DB_FILE
+    cd $TestArea
     exit 1
 fi
 
@@ -95,7 +127,7 @@ coolHist_insertFileToCatalog.py $ROOT_DB_FILE > $OUT_LOG
 # Generate a local database
 echo "generating local database file..."
 coolHist_setReference.py OFLP200 /GLOBAL/BTagCalib/RUN12 1 $TAG_NAME \
-                         $ROOT_DB_FILE > $OUT_LOG
+			 $ROOT_DB_FILE > $OUT_LOG
 
 # Open it to define its channel
 echo "setting channel..."
@@ -107,5 +139,8 @@ expect ">>>"
 send "exit\n"
 expect eof
 EOF
+
+# go back to the directory we started in
+cd $DIR
 
 echo "done!"

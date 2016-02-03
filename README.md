@@ -1,4 +1,4 @@
-# JSONtoCOOL
+# CreateLocalCOOLdb
 
 What is this?
 -------------
@@ -7,13 +7,13 @@ Basic python based script to generate a (local) COOL database from a neural net 
 
 How do I use it?
 ----------------
-Run `./JSONtoCOOL <base root file> <json file to add>`.
+Run `./CreateLocalCOOLdb <base root file> <json file to add>`.
 
 For more info, run the converter with no arguments (**do NOT source
 this script**)
 
 ```
-./JSONtoCOOL
+./CreateLocalCOOLdb
 ```
 
 This will print help. Follow the instructions.

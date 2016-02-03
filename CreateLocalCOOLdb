@@ -92,28 +92,14 @@ else
     exit 1
 fi
 
-export ATLAS_LOCAL_ROOT_BASE=/cvmfs/atlas.cern.ch/repo/ATLASLocalRootBase
-export ALRB_localConfigDir=$HOME/localConfig
-export AtlasSetup=/afs/cern.ch/atlas/software/dist/AtlasSetup
-alias setupATLAS='source ${ATLAS_LOCAL_ROOT_BASE}/user/atlasLocalSetup.sh'
-
 # ATLAS setup check
 if [[ ! $ATLAS_LOCAL_ASETUP_VERSION ]]; then
-    echo -n "setting up local ATLAS environment..."
-    setupATLAS -q
-    echo "done"
-    echo "Setting up Athena.\nPlease enter the full path of the test area you want to use: "
-    read TestArea_DIR
-    echo "Athena will be set up in the directory: $TestArea_DIR"
-    mv $ROOT_DB_FILE $TestArea_DIR/$ROOT_DB_FILE
-    cd $TestArea_DIR
-    source $AtlasSetup/scripts/asetup.sh $ATH_SETUP_CMD
+    echo -n "Please set up Athena first."
     exit 1
 else
-    echo "ATLAS environment is already setup in $TestArea, not setting up again"
+    echo "ATLAS environment is already setup in $TestArea"
     mv $ROOT_DB_FILE $TestArea/$ROOT_DB_FILE
     cd $TestArea
-    exit 1
 fi
 
 # Associate a GUID to this file

@@ -72,7 +72,7 @@ if [[ $# == 2 ]]; then
     NEW_ROOT_FILE=${2%%.json}.root
     python $DIR/removeExistingGUID.py $1 2> $OUT_LOG
     echo "building root file from json..."
-    python $DIR/addTextFileToRoot.py $2 2> $OUT_LOG
+    python $DIR/addTextFileToRoot.py -v 0 $2 2> $OUT_LOG
     if [[ -f $ROOT_DB_FILE ]]; then
 	echo "$ROOT_DB_FILE already exists, removing..."
 	rm $ROOT_DB_FILE

@@ -1,19 +1,16 @@
 import ROOT
 import sys
-import json
 import argparse
 
 def _run():
     args = _get_args()
 
-    # Check the input format matches expectation (JSON)
-    # TODO: The input file should be a text file (JSON, YAML, whatever...). sanity check will be changed to make sure it's not a ROOT file.
-    if not args.input_file.endswith(".json"):
-        print "ERROR: Input file does not match expected format, should be JSON."
+    if args.input_file.endswith(".root"):
+        print "ERROR: Input file does not match expected format, should be any text format, e.g. JSON or YAML."
         sys.exit(1)
 
     with open(args.input_file,'r') as fp:
-        config_str = json.load(fp)
+        config_str = fp.read()
 
     outHandle = ROOT.TFile.Open(args.input_file.replace(".json",".root"),"RECREATE")
     for i in args.jet_collection:
